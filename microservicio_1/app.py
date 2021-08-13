@@ -1,6 +1,6 @@
 from microservicio_1 import create_app
 from flask_restful import Resource, Api
-from flask import Flask, request
+from flask import Flask, request, current_app
 import requests
 import json
 from celery import Celery
@@ -19,7 +19,7 @@ def registrar_puntaje(cancion_json):
 class VistaPuntuacion(Resource):
 
     def post(self, id_cancion):
-        content = requests.get('http://127.0.0.1:5000/cancion/{}'.format(id_cancion))
+        content = requests.get(current_app.config['CANCION_RESOURCE_URL'].format(id_cancion))
         
         
         if content.status_code == 404:

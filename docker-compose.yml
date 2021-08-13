@@ -1,0 +1,97 @@
+version: "3.8"
+services:
+  base:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: canciones_api
+    command: flask run -h 0.0.0.0 -p 5000
+    env_file:
+      - common.env
+      - secrets.env
+    environment: 
+      - FLASK_APP=flaskr.app
+    volumes:
+      - .:/code
+    ports:
+      - "5000:5000"
+    depends_on:
+      - redis
+    networks:
+      - uniandes
+  
+  microservicio_1:
+    image: canciones_api
+    command: flask run -h 0.0.0.0 -p 5000
+    env_file:
+      - common.env
+      - secrets.env
+    environment: 
+      - FLASK_APP=microservicio_1.app
+    volumes:
+      - .:/code
+    ports:
+      - "5001:5000"
+    networks:
+      - uniandes
+  
+  microservicio_2:
+    image: canciones_api
+    command: flask run --host=0.0.0.0 -p 5002
+    env_file:
+      - common.env
+      - secrets.env
+    environment: 
+      - FLASK_APP=microservicio_2/flaskr.app
+    volumes:
+      - .:/code
+    ports:
+      - "5002:5002"
+    depends_on:
+      - worker_2
+      - postgresql
+    networks:
+      - uniandes
+  
+  worker_2:
+    image: canciones_api
+    depends_on:
+      - base
+      - redis
+    command: celery -A flaskr.tareas worker -l info --without-heartbeat --without-gossip --without-mingle
+    env_file:
+      - common.env
+      - secrets.env
+    volumes:
+      - ./microservicio_2:/code
+    networks:
+      - uniandes
+  
+  redis:
+    image: bitnami/redis:latest
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    networks:
+      - uniandes
+  
+  postgresql:
+    image: postgres:13-alpine
+    volumes:
+      - ./pg-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    env_file:
+      - common.env
+      - secrets.env
+    networks:
+      - uniandes
+
+volumes:
+  pg-data:
+    driver: local
+    driver_opts:
+      type: "none"
+      o: "bind"
+      device: .
+networks:
+  uniandes:
